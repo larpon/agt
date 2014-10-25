@@ -46,7 +46,11 @@ usage()
 	echo -e "\t\t# `basename $0` ic_action_test96.png"
 	echo -e "\n"
 	echo -e "\tGenerate Android standard 2,3,4,6,8,10 graphic scaled images from target DPI class xxxhdpi"
-	echo -e "\t\t# `basename $0` ic_action_test128.png"
+	echo -e "\t\t# `basename $0` -d xxxhdpi ic_action_test128.png"
+	echo -e "\n"
+	echo -e "\tGenerate Android standard 2,3,4,6,8 graphic scaled images from default xxhdpi target dir"
+	echo -e "\t\t# `basename $0` ./drawable-xxhdpi"
+	echo -e "\n"
 }
 
 check_exes()
@@ -155,7 +159,22 @@ round()
 	echo $(printf %.$2f "$1")
 }
 
-# $1 file path
+# Clone input dir structure to output dir
+cloneinputdirs()
+{
+	for FILE in `find "$1"`; do
+		if [ "$FILE" != "." ] && [ "$FILE" != "$OUTPUT_DIR" ]; then
+			if [ -d "$FILE" ]; then
+				if [ ! -d "$OUTPUT_DIR/$FILE" ]; then
+					mkdir "$OUTPUT_DIR/$FILE"
+				fi
+			fi
+		fi
+	done
+}
+
+# $1 input file path
+# $2 ouput dir path
 scale()
 {
 	local go=false
@@ -179,10 +198,11 @@ scale()
 			size=`round "$size" 0`
 			
 			#echo "$size"
-			
-			local outdir="res/drawable-$dpi_class"
+			local outdirnoslash=${2%/}
+			local outdir="$outdirnoslash-$dpi_class"
 			mkpath "$outdir"
-			outfile="$outdir/$1"
+			basefile=`basename "$1"`
+			outfile="$outdir/$basefile"
 			
 			if [ -f "$outfile" ] && [ "$FORCE" -ne 0 ]; then
 				echo -e "$outfile already exists"
@@ -200,11 +220,39 @@ scale()
 	
 }
 
+# $1 dir path
+scaledir()
+{
+	curdir=`pwd`
+	# Loop through input dir
+	indir=`cd "$1"; pwd`
+	for FILE in `find "$indir"`; do
+		if [ "$FILE" != "." ]; then
+
+			if [ -f "$FILE" ]; then
+				NICE_FILE=`echo "$FILE" | sed "s/^\.\///"`
+				NICE_FILE=`dirname $NICE_FILE`
+				
+				SRC="$FILE"
+				#DST="$OUTPUT_DIR/$FILE"
+				scale "$SRC" "$curdir/res/drawable"
+				#echo "$SRC $curdir/res/drawable"
+			fi
+		fi
+	done
+	cd "$curdir"
+}
+
 run()
 {
 	# Requires at least 1 argument
 	[ "$#" -gt 0 ] || die "Missing argument"
-	scale $1
+	
+	if [ -f "$1" ]; then
+		scale "$1" "res/drawable"
+	elif [ -d "$1" ]; then
+		scaledir "$1"
+	fi
 }
 
 #
